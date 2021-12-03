@@ -1,15 +1,20 @@
-variable "resource_group_name" {
-  description = "Set the name of resource group"
+variable "node_location" {
+  type = string
 }
-variable "resource_group_location" {
-  description = "Set the location on which resources are provisioned"
+variable "resource_prefix" {
+  type = string
 }
-variable "tags" {
-  type = map(string)
-  default = {
-    Owner       = "KirtiBansal"
-    Environment = "Testing"
-    CreatedBy   = "Terraform"
-  }
+variable "node_address_space" {
+  default = ["10.0.0.0/16"]
 }
-
+#variable for network range
+variable "node_address_prefix" {
+  default = "10.0.2.0/24"
+}
+#variable for Environment
+variable "Environment" {
+  type = string
+}
+variable "node_count" {
+  type = number
+}

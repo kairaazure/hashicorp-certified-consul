@@ -1,5 +1,7 @@
-# Configure the Microsoft Azure Provider
 terraform {
+
+  required_version = ">=0.12"
+
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
@@ -7,119 +9,135 @@ terraform {
     }
   }
 }
+
 provider "azurerm" {
   features {}
 }
 
-# Create a resource group if it doesn't exist
-resource "azurerm_resource_group" "myterraformgroup" {
-  name     = var.resource_group_name
-  location = var.resource_group_location
-  tags     = var.tags
+resource "azurerm_resource_group" "example_rg" {
+  name     = "${var.resource_prefix}-RG"
+  location = var.node_location
 }
 
-# Create virtual network
-resource "azurerm_virtual_network" "myterraformnetwork" {
-  name                = "myVnet"
-  address_space       = ["10.0.0.0/16"]
-  location            = "Central India"
-  resource_group_name = azurerm_resource_group.myterraformgroup.name
-  tags                = var.tags
-}
-
-# Create subnet
-resource "azurerm_subnet" "myterraformsubnet" {
-  name                 = "mySubnet"
-  resource_group_name  = azurerm_resource_group.myterraformgroup.name
-  virtual_network_name = azurerm_virtual_network.myterraformnetwork.name
-  address_prefixes     = ["10.0.1.0/24"]
-}
-
-# Create public IPs
-resource "azurerm_public_ip" "myterraformpublicip" {
-  name                = "myPublicIP"
-  location            = "Central India"
-  resource_group_name = azurerm_resource_group.myterraformgroup.name
-  allocation_method   = "Dynamic"
-
-  tags = var.tags
-}
-
-# Create Network Security Group and rule
-resource "azurerm_network_security_group" "myterraformnsg" {
-  name                = "myNetworkSecurityGroup"
-  location            = "Central India"
-  resource_group_name = azurerm_resource_group.myterraformgroup.name
-
-  security_rule {
-    name                       = "SSH"
-    priority                   = 1001
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "22"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
+resource "azurerm_virtual_network" "example_vnet" {
+  name                = "${var.resource_prefix}-vnet"
+  resource_group_name = azurerm_resource_group.example_rg.name
+  location            = var.node_location
+  address_space       = var.node_address_space
+  tags = {
+    environment = "Test"
+    Owner       = "Kirti Bansal"
   }
-
-  tags = var.tags
 }
 
-# Create network interface
-resource "azurerm_network_interface" "myterraformnic" {
-  name                = "myNIC"
-  location            = "Central India"
-  resource_group_name = azurerm_resource_group.myterraformgroup.name
+resource "azurerm_subnet" "example_subnet" {
+  name                 = "${var.resource_prefix}-subnet"
+  resource_group_name  = azurerm_resource_group.example_rg.name
+  virtual_network_name = azurerm_virtual_network.example_vnet.name
+  address_prefix       = var.node_address_prefix
+}
 
+/* resource "azurerm_public_ip" "example_public_ip" {
+  count = var.node_count
+  name = "${var.resource_prefix}-${format("%02d”,count.index)}-PublicIP"
+  #name = “${var.resource_prefix}-PublicIP”
+  location = azurerm_resource_group.example_rg.location
+  resource_group_name = azurerm_resource_group.example_rg.name
+  allocation_method = var.Environment == "Test" ? "Static" : "Dynamic"
+  tags = {
+  environment = "Test"
+} */
+resource "azurerm_public_ip" "example_public_ip" {
+  count = var.node_count
+  name  = "${var.resource_prefix}-${format("%02d", count.index)}-PublicIP"
+  #name = “${var.resource_prefix}-PublicIP”
+  location            = azurerm_resource_group.example_rg.location
+  resource_group_name = azurerm_resource_group.example_rg.name
+  allocation_method   = var.Environment == "Test" ? "Static" : "Dynamic"
+  tags = {
+    environment = "Test"
+    Owner       = "Kirti Bansal"
+  }
+}
+resource "azurerm_network_interface" "example_nic" {
+  count = var.node_count
+  #name = “${var.resource_prefix}-NIC”
+  name                = "${var.resource_prefix}-${format("%02d", count.index)}-NIC"
+  location            = azurerm_resource_group.example_rg.location
+  resource_group_name = azurerm_resource_group.example_rg.name
+  tags = {
+    environment = "Test"
+    Owner       = "Kirti Bansal"
+  }
+  #
   ip_configuration {
-    name                          = "myNicConfiguration"
-    subnet_id                     = azurerm_subnet.myterraformsubnet.id
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.example_subnet.id
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.myterraformpublicip.id
+    public_ip_address_id          = element(azurerm_public_ip.example_public_ip.*.id, count.index)
+    #public_ip_address_id = azurerm_public_ip.example_public_ip.id
+    #public_ip_address_id = azurerm_public_ip.example_public_ip.id
   }
-
-  tags = var.tags
 }
 
-# Connect the security group to the network interface
-resource "azurerm_network_interface_security_group_association" "example" {
-  network_interface_id      = azurerm_network_interface.myterraformnic.id
-  network_security_group_id = azurerm_network_security_group.myterraformnsg.id
-}
-# Create virtual machine
-resource "azurerm_linux_virtual_machine" "myterraformvm" {
-  name                  = "myVM"
-  count                 =2
-  location              = "Central India"
-  resource_group_name   = azurerm_resource_group.myterraformgroup.name
-  network_interface_ids = [azurerm_network_interface.myterraformnic.id]
-  size                  = "Standard_DS1_v2"
-
-  os_disk {
-    name                 = "myOsDisk"
-    caching              = "ReadWrite"
-    storage_account_type = "Premium_LRS"
+resource "azurerm_network_security_group" "example_nsg" {
+  name                = "${var.resource_prefix}-NSG"
+  location            = azurerm_resource_group.example_rg.location
+  resource_group_name = azurerm_resource_group.example_rg.name
+  # Security rule can also be defined with resource azurerm_network_security_rule, here just defining it inline.
+  /* security_rule {
+  name = "Inbound"
+  priority = 100
+  direction = "Inbound"
+  access = "Allow"
+  protocol = "Tcp"
+  source_port_range = "*"
+  destination_port_range = "*"
+  source_address_prefix = "*"
+  destination_address_prefix = "*"
+  } */
+  tags = {
+    environment = "Test"
+    Owner       = "Kirti Bansal"
   }
-
-  source_image_reference {
+}
+# Subnet and NSG association
+resource "azurerm_subnet_network_security_group_association" "example_subnet_nsg_association" {
+  subnet_id                 = azurerm_subnet.example_subnet.id
+  network_security_group_id = azurerm_network_security_group.example_nsg.id
+}
+# Virtual Machine Creation — Linux
+resource "azurerm_virtual_machine" "example_linux_vm" {
+  count = var.node_count
+  name  = "${var.resource_prefix}-${format("%02d", count.index)}"
+  #name = “${var.resource_prefix}-VM”
+  location                      = azurerm_resource_group.example_rg.location
+  resource_group_name           = azurerm_resource_group.example_rg.name
+  network_interface_ids         = [element(azurerm_network_interface.example_nic.*.id, count.index)]
+  vm_size                       = "Standard_A1_v2"
+  delete_os_disk_on_termination = true
+  storage_image_reference {
     publisher = "OpenLogic"
-    #offer="CentOS"
     offer     = "CentOS"
-    sku       = "7_9-gen2"
+    sku       = "7.5"
     version   = "latest"
   }
-
-  computer_name                   = "myvm"
-  admin_username                  = "azureuser"
-  disable_password_authentication = true
-
-  admin_ssh_key {
-    username = "azureuser"
-    #private_key_pem="${file("~/.ssh/id_rsa")}"
-    public_key = file("~/.ssh/id_rsa.pub")
+  storage_os_disk {
+    name              = "myosdisk-${count.index}"
+    caching           = "ReadWrite"
+    create_option     = "FromImage"
+    managed_disk_type = "Standard_LRS"
   }
-  /* boot_diagnostics {
-    storage_account_uri = azurerm_storage_account.mystorageaccount.primary_blob_endpoint
-  } */
+  os_profile {
+    computer_name  = "linuxhost"
+    admin_username = "kirti"
+    admin_password = "Password@1234"
+  }
+  os_profile_linux_config {
+    disable_password_authentication = false
+  }
+  tags = {
+    environment = "Test"
+    Owner       = "Kirti Bansal"
+  }
 }
