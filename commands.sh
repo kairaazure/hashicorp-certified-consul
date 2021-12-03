@@ -5,7 +5,12 @@ macOS Installation
    consul agent -dev #to start the dev agent
    http://localhost:8500/ui  #consul ui
    stop the consul dev agent to move back to the original consul # it removes all the previous data
+   node-name is hostname
+   #To join client to cluster
+     1. Have the consul server running on linux vm
+     2. Create one more vm have consul installed and make it client wiht the following steps:
 
+   If installed consul in linux host, add firewall rule to allow the laptop ip at port 8500
 #Others Commands
 
  1004  netstat | grep consul
