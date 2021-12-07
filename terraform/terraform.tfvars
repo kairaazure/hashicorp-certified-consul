@@ -1,4 +1,4 @@
 node_location = "Central India"
-resource_prefix = "linuxnode-kb"
+resource_prefix = "terraform-kb"
 Environment = "Test"
 node_count = 2

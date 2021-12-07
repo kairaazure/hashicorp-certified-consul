@@ -15,8 +15,12 @@ provider "azurerm" {
 }
 
 resource "azurerm_resource_group" "example_rg" {
-  name     = "${var.resource_prefix}-RG"
+  name     = "${var.resource_prefix}-rg"
   location = var.node_location
+  tags = {
+    environment = "Test"
+    Owner       = "Kirti Bansal"
+  }
 }
 
 resource "azurerm_virtual_network" "example_vnet" {
@@ -110,6 +114,7 @@ resource "azurerm_subnet_network_security_group_association" "example_subnet_nsg
 resource "azurerm_virtual_machine" "example_linux_vm" {
   count = var.node_count
   name  = "${var.resource_prefix}-${format("%02d", count.index)}"
+ // name  = "${format("%02d", count.index)}"
   #name = “${var.resource_prefix}-VM”
   location                      = azurerm_resource_group.example_rg.location
   resource_group_name           = azurerm_resource_group.example_rg.name
@@ -129,7 +134,7 @@ resource "azurerm_virtual_machine" "example_linux_vm" {
     managed_disk_type = "Standard_LRS"
   }
   os_profile {
-    computer_name  = "linuxhost"
+    computer_name  = "linuxvm-${format("%02d", count.index)}"
     admin_username = "kirti"
     admin_password = "Password@1234"
   }
